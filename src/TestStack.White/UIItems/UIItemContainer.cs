@@ -34,7 +34,8 @@ namespace TestStack.White.UIItems
 
         public UIItemContainer(AutomationElement automationElement, ActionListener actionListener,
                                InitializeOption initializeOption,
-                               WindowSession windowSession) : base(automationElement, actionListener)
+                               WindowSession windowSession)
+            : base(automationElement, actionListener)
         {
             WindowSession = windowSession;
             CurrentContainerItemFactory = new CurrentContainerItemFactory(factory, initializeOption, automationElement, ChildrenActionListener);
@@ -57,7 +58,7 @@ namespace TestStack.White.UIItems
 
         public virtual T Get<T>(SearchCriteria searchCriteria) where T : IUIItem
         {
-            return (T) Get(searchCriteria.AndControlType(typeof (T), Framework));
+            return (T)Get(searchCriteria.AndControlType(typeof(T), Framework));
         }
 
         public virtual IUIItem Get(SearchCriteria searchCriteria)
@@ -80,11 +81,11 @@ namespace TestStack.White.UIItems
             return Exists(searchCriteria.AndControlType(typeof(T), Framework));
         }
 
-        public virtual bool Exists(SearchCriteria searchCriteria)
+        public virtual bool Exists(SearchCriteria searchCriteria, bool collectDebugDetails = true)
         {
             try
             {
-                Get(searchCriteria, TimeSpan.FromMilliseconds(0));
+                Get(searchCriteria, TimeSpan.FromMilliseconds(0), collectDebugDetails);
                 return true;
             }
             catch (AutomationException)
@@ -99,22 +100,30 @@ namespace TestStack.White.UIItems
         /// </summary>
         /// <param name="searchCriteria">Criteria provided to search IUIItem</param>
         /// <param name="timeout">Time to wait for item to come on-screen before returning off-screen element, if found.</param>
+        /// <param name="collectDebugDetails">Citeria provided to collect debug details on AutomationException.</param>
         /// <returns>First items matching the criteria</returns>
         /// <exception cref="AutomationException">when item not found</exception>
         /// <exception cref="WhiteException">when any errors occured during search</exception>
-        public virtual IUIItem Get(SearchCriteria searchCriteria, TimeSpan timeout)
+        public virtual IUIItem Get(SearchCriteria searchCriteria, TimeSpan timeout, bool collectDebugDetails = true)
         {
             try
             {
                 var uiItem = Retry.For(() =>
                     CurrentContainerItemFactory.Find(searchCriteria, WindowSession),
-                    b =>(bool)b.AutomationElement.GetCurrentPropertyValue(AutomationElement.IsOffscreenProperty, false),
+                    b => (bool)b.AutomationElement.GetCurrentPropertyValue(AutomationElement.IsOffscreenProperty, false),
                     timeout);
 
                 if (uiItem == null)
                 {
-                    var debugDetails = Debug.Details(automationElement);
-                    throw new AutomationException(string.Format("Failed to get {0}", searchCriteria), debugDetails);
+                    if (collectDebugDetails)
+                    {
+                        var debugDetails = Debug.Details(automationElement);
+                        throw new AutomationException(string.Format("Failed to get {0}", searchCriteria), debugDetails);
+                    }
+                    else
+                    {
+                        throw new AutomationException(string.Format("Failed to get {0}", searchCriteria), String.Empty);
+                    }
                 }
 
                 HandleIfCustomUIItem(uiItem);
@@ -147,8 +156,8 @@ namespace TestStack.White.UIItems
             FieldInfo interceptorField = customUIItem.GetType().GetField("__interceptors",
                                                                          BindingFlags.NonPublic | BindingFlags.Public |
                                                                          BindingFlags.Instance);
-            var interceptors = (IInterceptor[]) interceptorField.GetValue(customUIItem);
-            var realCustomUIItem = (CustomUIItem) ((CoreInterceptor) interceptors[0]).Context.UiItem;
+            var interceptors = (IInterceptor[])interceptorField.GetValue(customUIItem);
+            var realCustomUIItem = (CustomUIItem)((CoreInterceptor)interceptors[0]).Context.UiItem;
             realCustomUIItem.SetContainer(new UIItemContainer(customUIItem.AutomationElement, ChildrenActionListener,
                                                               InitializeOption.NoCache, WindowSession));
         }
@@ -224,12 +233,12 @@ namespace TestStack.White.UIItems
 
         public virtual MenuBar MenuBar
         {
-            get { return (MenuBar) Get(SearchCriteria.ForMenuBar(Framework)); }
+            get { return (MenuBar)Get(SearchCriteria.ForMenuBar(Framework)); }
         }
 
         public virtual MenuBar GetMenuBar(SearchCriteria searchCriteria)
         {
-            return (MenuBar) Get(SearchCriteria.ForMenuBar(Framework).Merge(searchCriteria));
+            return (MenuBar)Get(SearchCriteria.ForMenuBar(Framework).Merge(searchCriteria));
         }
 
         public virtual List<MenuBar> MenuBars
@@ -245,7 +254,7 @@ namespace TestStack.White.UIItems
         public virtual ToolTip GetToolTipOn(UIItem uiItem)
         {
             Mouse.Location = uiItem.Bounds.Center();
-            uiItem.Focus(); 
+            uiItem.Focus();
             return ToolTip;
         }
 
@@ -254,7 +263,7 @@ namespace TestStack.White.UIItems
             get
             {
                 Focus();
-                return (ToolStrip) Get(SearchCriteria.ByControlType(ControlType.ToolBar));
+                return (ToolStrip)Get(SearchCriteria.ByControlType(ControlType.ToolBar));
             }
         }
 
@@ -265,7 +274,7 @@ namespace TestStack.White.UIItems
 
         public virtual ToolStrip GetToolStrip(string primaryIdentification)
         {
-            var toolStrip = (ToolStrip) Get(SearchCriteria.ByAutomationId(primaryIdentification));
+            var toolStrip = (ToolStrip)Get(SearchCriteria.ByAutomationId(primaryIdentification));
             if (toolStrip == null) return null;
             toolStrip.Associate(WindowSession);
             return toolStrip;
